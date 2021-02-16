@@ -40,6 +40,7 @@
 // Options of dump2exe
 typedef struct {
 	bool dump;
+    unsigned long long offset;
 } options_t;
 
 // Simply display usage
@@ -58,15 +59,19 @@ static options_t *parse_options(int argc, char *argv[])
 {
 	options_t *options = calloc(1, sizeof(options_t));
 
-	static const char short_options[] = "e";
+	static const char short_options[] = "eo:";
+
+    options->offset = 0;
 
 	static struct option long_options[] = {
-		{ "help",             no_argument,       NULL,  1  },       // Display the help
-		{ "extract",             no_argument,       NULL, 'e' },       // Dump the encountered binaries
-		{  NULL,              0,                 NULL,  0  }
+		{ "help",           no_argument,       NULL,  1  },       // Display the help
+		{ "extract",        no_argument,       NULL, 'e' },       // Dump the encountered binaries
+        { "offset",         required_argument, NULL, 'o' },       // Dunp only the selected ofset
+		{  NULL,            0,                 NULL,  0  }
 	};
 
 	int c, ind;
+    char * pEnd;
 
 	while ((c = getopt_long(argc, argv, short_options, long_options, &ind)))
 	{
@@ -81,6 +86,10 @@ static options_t *parse_options(int argc, char *argv[])
 			case 'e':
 				options->dump = true;
 				break;
+            case 'o':
+                
+                options->offset = strtoull(optarg, &pEnd, 10);
+                break;
 			default:
 				eprint("dump2exe: try '--help' for more information\n");
 				exit(EXIT_FAILURE);
@@ -156,7 +165,7 @@ int parse(options_t *options,  char * file)
                             fpos = ftell(finput)+i-tread;
 
 
-                            iprint("Found potential MZ at %#lx\n", fpos);
+                            iprint("Found potential MZ at %#lx (%ld)\n", fpos, fpos);
                             iprint("\tPE header offset : \t\t%#x - Valid PE signature\n", pdos_h->PeHeaderOffset);
 
                             // Retrieve information from the Machine field in FileHeader 
@@ -227,8 +236,12 @@ int parse(options_t *options,  char * file)
 
                                         if (options->dump) 
                                         {
-                                            // User wants us to dump the exe 
-                                            dump_binary(ptr, pioh32->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h32_current->FileHeader.Characteristics);
+                                            if ( (options->offset == 0) || (options->offset != 0 && options->offset == fpos))
+                                            {
+                                                // User wants us to dump the exe 
+                                                dump_binary(ptr, pioh32->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h32_current->FileHeader.Characteristics);
+                                                iprint("\tDumped binary\n\n");
+                                            }
                                         }
 
                                         free(ptr);
@@ -298,8 +311,12 @@ int parse(options_t *options,  char * file)
 
                                         if (options->dump) 
                                         {
-                                            // User wants us to dump the exe 
-                                            dump_binary(ptr, pioh64->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h64_current->FileHeader.Characteristics);
+                                            if ( (options->offset == 0) || (options->offset != 0 && options->offset == fpos))
+                                            {
+                                                // User wants us to dump the exe 
+                                                dump_binary(ptr, pioh64->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h64_current->FileHeader.Characteristics);
+                                                iprint("\tDumped binary\n\n");
+                                            }
                                         }
 
                                         free(ptr);
