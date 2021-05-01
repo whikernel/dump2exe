@@ -107,6 +107,7 @@ int parse(options_t *options,  char * file)
 
     FILE *finput = NULL;
     long fpos = 0;
+    void * ptr = NULL;
 
     char buf[256]; 
     char buffer[4096]; 
@@ -149,6 +150,7 @@ int parse(options_t *options,  char * file)
                     pdos_h_current = NULL;
                     pnt_h64_current = NULL;
                     pnt_h32_current = NULL;
+                    ptr = NULL;
 
                     // MZ header found, apply the PDOS header and search for the PE header
                     pdos_h = (PDOS_HEADER) &buffer[i];
@@ -206,7 +208,7 @@ int parse(options_t *options,  char * file)
 
                                     // Pretty sure the image is valid, allocate memory to read entirely, 
                                     // as the inital buffer could have cut the executable
-                                    void * ptr = malloc(pioh32->SizeOfImage);
+                                    ptr = malloc(pioh32->SizeOfImage);
 
                                     if (VALID_PTR(ptr)) 
                                     {
@@ -221,7 +223,7 @@ int parse(options_t *options,  char * file)
                                             eprint("\n/!\\ Unable to read the entire PE. Read %ld/%d\n", nread, pioh32->SizeOfImage);
                                         }
 
-                                        // Appliy aggain the PE structures on the loaded images
+                                        // Appliy again the PE structures on the loaded images
                                         pdos_h_current = ptr;
                                         pnt_h32_current = ptr + pdos_h_current->PeHeaderOffset;
                                         
@@ -232,7 +234,7 @@ int parse(options_t *options,  char * file)
                                         md5_hash_from_stream(ptr, pioh32->SizeOfImage);
                                         
                                         // Retrieve information on the sections
-                                        check_sections32(pnt_h32_current);
+                                        check_sections32(pnt_h32_current, nt_h->FileHeader.NumberOfSections );
 
                                         if (options->dump) 
                                         {
@@ -269,7 +271,8 @@ int parse(options_t *options,  char * file)
                                 // Verify if the optional header magic matches x64
                                 if (IS_SUCCESS(check_optional_headers64( (char *) &nt_h->OptionalHeader)))
                                 {
-                                
+                                    
+                                    // Get a pointer to the functionnal header 
                                     pioh64 = (PIMAGE_OPTIONAL_HEADER64) &(nt_h->OptionalHeader);
                                     
                                     iprint("\tImage size: \t\t\t%d bytes\n", pioh64->SizeOfImage);
@@ -280,43 +283,58 @@ int parse(options_t *options,  char * file)
 
                                     // Pretty sure the image is valid, allocate memory to read entirely, 
                                     // as the inital buffer could have cut the executable
-                                    void * ptr = malloc(pioh64->SizeOfImage);
+                                    ptr = malloc((size_t)pioh64->SizeOfImage);
 
+                                    dprint("\n\tAllocated %d (real %d) for image\n", pioh64->SizeOfImage, malloc_usable_size(ptr));
                                     if (VALID_PTR(ptr)) 
                                     {
 
                                         // Seek back to the image start
                                         fseek(finput, fpos, SEEK_SET);
+                                        dprint("\tSeeked to %#lx to read image\n", ftell(finput));
 
                                         // Read the executable from the file
-                                        nread = fread(ptr, 1, pioh64->SizeOfImage, finput );
+                                        nread = fread(ptr, 1, (size_t)pioh64->SizeOfImage, finput );
                                         if (nread != pioh64->SizeOfImage) 
                                         {
                                             eprint("\n/!\\ Unable to read the entire PE. Read %ld/%d\n", nread, pioh64->SizeOfImage);
                                         }
 
+                                        dprint("\tRead %ld of file\n", nread);
                                         // Apply aggain the PE structures on the loaded images
+                                        dprint("\tPointer of loaded image : %p\n", (void *)ptr);
                                         pdos_h_current = (PDOS_HEADER)((char *)ptr);
-
-                                        pnt_h64_current = (PIMAGE_NT_HEADERS64)((char *)ptr + pdos_h_current->PeHeaderOffset);
                                         
-                                        // Retrieve the characteristics of the PE 
-                                        check_characteristics(pnt_h64_current->FileHeader.Characteristics);
-
-                                        // Compute the MD5 of the loaded PE
-                                        md5_hash_from_stream(ptr, pioh64->SizeOfImage);
-                                        
-                                        // Retrieve information on the sections
-                                        check_sections64(pnt_h64_current);
-
-                                        if (options->dump) 
+                                        dprint("\tPointer of PDOS header %p\n", (void *)pdos_h_current);
+                                        if (check_mz_magic((char *)pdos_h_current)) 
                                         {
-                                            if ( (options->offset == 0) || (options->offset != 0 && options->offset == fpos))
+                                            dprint("\tLoaded DOS Magic %#x\n", pdos_h_current->DosMagic);
+                                            dprint("\tLoaded PE Offset %d\n", pdos_h_current->PeHeaderOffset);
+                                            pnt_h64_current = (PIMAGE_NT_HEADERS64)((char *)ptr + pdos_h_current->PeHeaderOffset);
+                                            
+                                            // Retrieve the characteristics of the PE 
+                                            dprint("\tLoaded PE Magic %#x\n", pnt_h64_current->Signature);
+                                            check_characteristics(pnt_h64_current->FileHeader.Characteristics);
+
+                                            // Compute the MD5 of the loaded PE
+                                            md5_hash_from_stream(ptr, pioh64->SizeOfImage);
+                                            
+                                            // Retrieve information on the sections
+                                            check_sections64(pnt_h64_current, nt_h->FileHeader.NumberOfSections);
+
+                                            if (options->dump) 
                                             {
-                                                // User wants us to dump the exe 
-                                                dump_binary(ptr, pioh64->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h64_current->FileHeader.Characteristics);
-                                                iprint("\tDumped binary\n\n");
+                                                if ( (options->offset == 0) || (options->offset != 0 && options->offset == fpos))
+                                                {
+                                                    // User wants us to dump the exe 
+                                                    dump_binary(ptr, pioh64->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h64_current->FileHeader.Characteristics);
+                                                    iprint("\tDumped binary\n\n");
+                                                }
                                             }
+                                        }
+                                        else 
+                                        {
+                                            eprint("Prevented error on reading.");
                                         }
 
                                         free(ptr);
@@ -338,7 +356,7 @@ int parse(options_t *options,  char * file)
 
                             }
 
-                            printf("\n"); 
+                            iprint("\n"); 
                         }
                     }
                     
@@ -346,7 +364,7 @@ int parse(options_t *options,  char * file)
             }
         }
         
-        printf("\n"); 
+        iprint("\n"); 
 
         fclose(finput);
     }

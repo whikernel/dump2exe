@@ -79,14 +79,15 @@ void section_characteristics(uint32_t characteristics)
 		{ IMAGE_SCN_MEM_WRITE,                  "Can be write"}
 	};
 
+    printf("\tCharacteristics : %#x", characteristics);
     for (uint32_t i=0; i < 35; i++) {
         if (names[i].FlagValue & characteristics) {
-            printf("%s - ", names[i].FlagName);
+            printf("%.60s - ", names[i].FlagName);
         }
     }
 }
 
-void check_sections64(PIMAGE_NT_HEADERS64 nt_h) 
+void check_sections64(PIMAGE_NT_HEADERS64 nt_h, DWORD wValidation) 
 {
     PIMAGE_SECTION_HEADER tmpSection = NULL;
     void * sections_ptr = NULL;
@@ -96,20 +97,24 @@ void check_sections64(PIMAGE_NT_HEADERS64 nt_h)
 
     sections_ptr = (void *)((char *)nt_h + sections_offset);
 
-    printf("\tSections : \n");
-    
-    for (uint i = 0; i < nt_h->FileHeader.NumberOfSections; i++) 
-    {
-        tmpSection = sections_ptr + i * sizeof(IMAGE_SECTION_HEADER);
-        printf("\t\t\t\t\t%.8s:\t\t", tmpSection->Name);
-        section_characteristics(tmpSection->Characteristics);
-        printf("\n");
+    if (wValidation != nt_h->FileHeader.NumberOfSections) {
+        eprint("\tMisreading. Using pre-read sections value");
     }
 
-    printf("\n");
+    printf("\tSections : \n");
+    
+    for (uint i = 0; i < wValidation; i++) 
+    {
+        tmpSection = sections_ptr + i * sizeof(IMAGE_SECTION_HEADER);
+        iprint("\t\t\t\t\t%.8s:\t\t", tmpSection->Name);
+        section_characteristics(tmpSection->Characteristics);
+        iprint("\n");
+    }
+
+    iprint("\n");
 }
 
-void check_sections32(PIMAGE_NT_HEADERS32 nt_h) 
+void check_sections32(PIMAGE_NT_HEADERS32 nt_h, WORD wValidation) 
 {
     PIMAGE_SECTION_HEADER tmpSection = NULL;
     void * sections_ptr = NULL;
@@ -119,17 +124,21 @@ void check_sections32(PIMAGE_NT_HEADERS32 nt_h)
 
     sections_ptr = (void *)((char *)nt_h + sections_offset);
 
-    printf("\tSections : \n");
-    
-    for (uint i = 0; i < nt_h->FileHeader.NumberOfSections; i++) 
-    {
-        tmpSection = sections_ptr + i * sizeof(IMAGE_SECTION_HEADER);
-        printf("\t\t\t\t\t%.8s:\t\t", tmpSection->Name);
-        section_characteristics(tmpSection->Characteristics);
-        printf("\n");
+    if (wValidation != nt_h->FileHeader.NumberOfSections) {
+        eprint("\tMisreading. Using pre-read sections value");
     }
 
-    printf("\n");
+    iprint("\tSections : \n");
+    
+    for (uint i = 0; i < wValidation; i++) 
+    {
+        tmpSection = sections_ptr + i * sizeof(IMAGE_SECTION_HEADER);
+        iprint("\t\t\t\t\t%.8s:\t\t", tmpSection->Name);
+        section_characteristics(tmpSection->Characteristics);
+        iprint("\n");
+    }
+
+    iprint("\n");
 }
 
 
@@ -156,8 +165,8 @@ void check_characteristics( WORD characteristics )
 	};
 
     printf("\tCharacteristics: \t\t");
-    for (uint16_t i=0, flag=0x0001; i < 16; i++, flag <<= 1) {
-        if (characteristics & flag) {
+    for (uint16_t i=0; i < 16; i++) {
+        if (characteristics & characteristicsTable[i].FlagValue) {
             printf("%s, ", characteristicsTable[i].FlagName);
         }
     }

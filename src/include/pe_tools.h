@@ -45,6 +45,6 @@ int check_pe_magic(char * ptr_buffer);
 int check_pe_machine(WORD pe_machine);
 void md5_hash_from_stream (char *buffer, size_t buffer_size);
 void check_characteristics( WORD characteristics );
-void check_sections32(PIMAGE_NT_HEADERS32 nt_h);
-void check_sections64(PIMAGE_NT_HEADERS64 nt_h);
+void check_sections32(PIMAGE_NT_HEADERS32 nt_h, WORD dwValidation);
+void check_sections64(PIMAGE_NT_HEADERS64 nt_h, WORD dwValidation);
 void section_characteristics(uint32_t characteristics);

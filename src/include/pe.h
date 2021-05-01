@@ -102,12 +102,12 @@ typedef double ULONGLONG;
 
 typedef struct _IMG_CHARACTERISTICS {
     WORD          FlagValue;
-    char * const  FlagName;    
+    const char    FlagName[60];    
 }IMG_CHARACTERISTICS, *PIMG_CHARACTERISTICS;
 
 typedef struct _SECTIONS_CHARACTERISTICS {
     DWORD         FlagValue;
-    char * const  FlagName;    
+    char const    FlagName[60];    
 }SECTIONS_CHARACTERISTICS, *PSECTIONS_CHARACTERISTICS;
 
 #define IMAGE_SIZEOF_SHORT_NAME 8
