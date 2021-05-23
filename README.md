@@ -1,6 +1,6 @@
 # dump2exe
 Extract Win executables from dumps, display some basic information about them.
-
+*Why not use libpe ? Mostly for education purpose :) !*
 
 ## Compilation
 1. Install the following (apt-based): `apt install libssl-dev`
