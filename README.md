@@ -11,7 +11,7 @@ Extract Win executables from dumps, display some basic information about them.
 ```
 ./bin/dump2exe mem.dmp                  // Display info 
 ./bin/dump2exe -e mem.dmp               // Extract and display info
-./bin/dump2exe -e -o 123456 mem.dmp     // Display info qnd extract bin at offset 123456
+./bin/dump2exe -e -o 123456 mem.dmp     // Display info and extract bin at offset 123456
 ```
 
 ## Known issue

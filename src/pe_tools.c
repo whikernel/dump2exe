@@ -79,9 +79,9 @@ void section_characteristics(uint32_t characteristics)
 		{ IMAGE_SCN_MEM_WRITE,                  "Can be write"}
 	};
 
-    printf("\tCharacteristics : %#x", characteristics);
+    printf("\tCharacteristics : ");
     for (uint32_t i=0; i < 35; i++) {
-        if (names[i].FlagValue & characteristics) {
+        if ((names[i].FlagValue & characteristics) == names[i].FlagValue) {
             iprint("%.60s - ", names[i].FlagName);
         }
     }
@@ -166,7 +166,7 @@ void check_characteristics( WORD characteristics )
 
     printf("\tCharacteristics: \t\t");
     for (uint16_t i=0; i < 16; i++) {
-        if (characteristics & characteristicsTable[i].FlagValue) {
+        if ((characteristics & characteristicsTable[i].FlagValue) == characteristicsTable[i].FlagValue) {
             printf("%s, ", characteristicsTable[i].FlagName);
         }
     }
