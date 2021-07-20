@@ -39,6 +39,7 @@
 
 #define VALID_PTR(_ptr)     (_ptr != NULL)
 #define IS_SUCCESS(_ret)    (_ret > 0)
+#define IS_FAILURE(_ret)    !IS_SUCCESS(_ret)
 
 #define iprint(_msg, ...)       fprintf(stdout, (const char *)_msg __VA_OPT__(,) __VA_ARGS__)
 #define eprint(_msg, ...)       fprintf(stderr, (const char *)_msg __VA_OPT__(,) __VA_ARGS__)
