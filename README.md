@@ -13,6 +13,3 @@ Extract Win executables from dumps, display some basic information about them.
 ./bin/dump2exe -e mem.dmp               // Extract and display info
 ./bin/dump2exe -e -o 123456 mem.dmp     // Display info and extract bin at offset 123456
 ```
-
-## Known issue
-- Some memory leaks & corruption happens on very large dumps. Patch to come 
