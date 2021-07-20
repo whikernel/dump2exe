@@ -51,7 +51,8 @@ static void usage(void)
 		"\nExample: dump2exe mem.dmp\n"
 		"\nOptions:\n"
 		" -e, --extract                             Dump the detected files.\n"
-        );
+        " -o, --offset                              Dump and read at provided offset.\n"    
+    );
 }
 
 // Parse the options provided by the user
@@ -115,6 +116,7 @@ int parse(options_t *options,  char * file)
     
     size_t nread = 0;
     size_t tread = 0;
+    size_t pr_size = 0;
 
     PDOS_HEADER pdos_h = NULL;
     PDOS_HEADER pdos_h_current = NULL;
@@ -201,6 +203,8 @@ int parse(options_t *options,  char * file)
                                     pioh32 = (PIMAGE_OPTIONAL_HEADER32) &(nt_h->OptionalHeader);
                                     
                                     iprint("\tImage size: \t\t\t%d bytes\n", pioh32->SizeOfImage);
+                                    iprint("\tSection aligments: \t\t%d bytes\n",pioh32->SectionAlignment);
+                                    iprint("\tFile aligment: \t\t%d bytes\n",pioh32->FileAlignment);
                                     iprint("\tEntry point: \t\t\t%#x\n", pioh32->AddressOfEntryPoint);
 
                                     // Retrieve the image base offset
@@ -217,10 +221,16 @@ int parse(options_t *options,  char * file)
                                         fseek(finput, fpos, SEEK_SET);
 
                                         // Read the executable from the file
-                                        nread = fread(ptr, 1, pioh32->SizeOfImage, finput );
-                                        if (nread != pioh32->SizeOfImage) 
+                                        nread = fread(ptr, pioh32->SizeOfImage, 1, finput );
+
+                                        
+                                        if (nread < pioh32->SizeOfImage) 
                                         {
-                                            eprint("\n/!\\ Unable to read the entire PE. Read %ld/%d\n", nread, pioh32->SizeOfImage);
+                                            dprint("\tSizeOfImage larger than what's readable.\n\tMaybe sections' virtual size are larger than raw size\n");
+                                            dprint("\tUsing read size as base.\n");
+                                            pr_size = nread;
+                                        } else {
+                                            pr_size = pioh32->SizeOfImage;
                                         }
 
                                         // Appliy again the PE structures on the loaded images
@@ -231,7 +241,7 @@ int parse(options_t *options,  char * file)
                                         check_characteristics(pnt_h32_current->FileHeader.Characteristics);
 
                                         // Compute the MD5 of the loaded PE
-                                        md5_hash_from_stream(ptr, pioh32->SizeOfImage);
+                                        md5_hash_from_stream(ptr, pr_size);
                                         
                                         // Retrieve information on the sections
                                         check_sections32(pnt_h32_current, nt_h->FileHeader.NumberOfSections );
@@ -241,8 +251,8 @@ int parse(options_t *options,  char * file)
                                             if ( (options->offset == 0) || (options->offset != 0 && options->offset == fpos))
                                             {
                                                 // User wants us to dump the exe 
-                                                dump_binary(ptr, pioh32->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h32_current->FileHeader.Characteristics);
-                                                iprint("\tDumped binary\n\n");
+                                                dump_binary(ptr, pr_size, fpos, IMAGE_FILE_DLL & pnt_h32_current->FileHeader.Characteristics);
+                                                iprint("\tExecutable was dumped successfully\n\n");
                                             }
                                         }
 
@@ -276,6 +286,8 @@ int parse(options_t *options,  char * file)
                                     pioh64 = (PIMAGE_OPTIONAL_HEADER64) &(nt_h->OptionalHeader);
                                     
                                     iprint("\tImage size: \t\t\t%d bytes\n", pioh64->SizeOfImage);
+                                    iprint("\tSection aligments: \t\t%d bytes\n",pioh64->SectionAlignment);
+                                    iprint("\tFile aligments: \t\t%d bytes\n",pioh64->FileAlignment);
                                     iprint("\tEntry point: \t\t\t%#x\n", pioh64->AddressOfEntryPoint);
 
                                     // Retrieve the image base offset
@@ -285,7 +297,7 @@ int parse(options_t *options,  char * file)
                                     // as the inital buffer could have cut the executable
                                     ptr = malloc((size_t)pioh64->SizeOfImage);
 
-                                    dprint("\n\tAllocated %d (real %d) for image\n", pioh64->SizeOfImage, malloc_usable_size(ptr));
+                                    dprint("\n\tAllocated %d for image\n", pioh64->SizeOfImage);
                                     if (VALID_PTR(ptr)) 
                                     {
 
@@ -295,12 +307,18 @@ int parse(options_t *options,  char * file)
 
                                         // Read the executable from the file
                                         nread = fread(ptr, 1, (size_t)pioh64->SizeOfImage, finput );
-                                        if (nread != pioh64->SizeOfImage) 
+   
+                                        dprint("\tRead %ld of file\n", nread);
+
+                                        if (nread < pioh64->SizeOfImage) 
                                         {
-                                            eprint("\n/!\\ Unable to read the entire PE. Read %ld/%d\n", nread, pioh64->SizeOfImage);
+                                            dprint("\tSizeOfImage larger than what's readable.\n\tMaybe sections' virtual size are larger than raw size\n");
+                                            dprint("\tUsing read size as base.\n");
+                                            pr_size = nread;
+                                        } else {
+                                            pr_size = pioh64->SizeOfImage;
                                         }
 
-                                        dprint("\tRead %ld of file\n", nread);
                                         // Apply aggain the PE structures on the loaded images
                                         dprint("\tPointer of loaded image : %p\n", (void *)ptr);
                                         pdos_h_current = (PDOS_HEADER)((char *)ptr);
@@ -317,7 +335,7 @@ int parse(options_t *options,  char * file)
                                             check_characteristics(pnt_h64_current->FileHeader.Characteristics);
 
                                             // Compute the MD5 of the loaded PE
-                                            md5_hash_from_stream(ptr, pioh64->SizeOfImage);
+                                            md5_hash_from_stream(ptr, pr_size);
                                             
                                             // Retrieve information on the sections
                                             check_sections64(pnt_h64_current, nt_h->FileHeader.NumberOfSections);
@@ -327,8 +345,8 @@ int parse(options_t *options,  char * file)
                                                 if ( (options->offset == 0) || (options->offset != 0 && options->offset == fpos))
                                                 {
                                                     // User wants us to dump the exe 
-                                                    dump_binary(ptr, pioh64->SizeOfImage, fpos, IMAGE_FILE_DLL & pnt_h64_current->FileHeader.Characteristics);
-                                                    iprint("\tDumped binary\n\n");
+                                                    dump_binary(ptr, pr_size, fpos, IMAGE_FILE_DLL & pnt_h64_current->FileHeader.Characteristics);
+                                                    iprint("\tExecutable was dumped successfully\n\n");
                                                 }
                                             }
                                         }

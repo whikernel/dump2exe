@@ -82,7 +82,7 @@ void section_characteristics(uint32_t characteristics)
     printf("\tCharacteristics : ");
     for (uint32_t i=0; i < 35; i++) {
         if ((names[i].FlagValue & characteristics) == names[i].FlagValue) {
-            iprint("%.60s - ", names[i].FlagName);
+            iprint("%.60s; ", names[i].FlagName);
         }
     }
 }
@@ -106,7 +106,7 @@ void check_sections64(PIMAGE_NT_HEADERS64 nt_h, DWORD wValidation)
     for (uint i = 0; i < wValidation; i++) 
     {
         tmpSection = sections_ptr + i * sizeof(IMAGE_SECTION_HEADER);
-        iprint("\t\t\t\t\t%.8s:\t\t", tmpSection->Name);
+        iprint("\t\t%.8s:\t\t", tmpSection->Name);
         section_characteristics(tmpSection->Characteristics);
         iprint("\n");
     }
@@ -133,7 +133,7 @@ void check_sections32(PIMAGE_NT_HEADERS32 nt_h, WORD wValidation)
     for (uint i = 0; i < wValidation; i++) 
     {
         tmpSection = sections_ptr + i * sizeof(IMAGE_SECTION_HEADER);
-        iprint("\t\t\t\t\t%.8s:\t\t", tmpSection->Name);
+        iprint("\t\t\t\t%.8s:\t\t", tmpSection->Name);
         section_characteristics(tmpSection->Characteristics);
         iprint("\n");
     }
